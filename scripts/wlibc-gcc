@@ -1,0 +1,5 @@
+#!/bin/sh
+# удобный драйвер: собирает статический бинарник с wlibc
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec gcc -nostdinc -ffreestanding -static -nostdlib \
+    -I"$root/include" "$root/obj/crt1.o" "$@" "$root/libc.a"
