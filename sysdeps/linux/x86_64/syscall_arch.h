@@ -10,17 +10,22 @@
 #define SYS_mmap 9
 #define SYS_mprotect 10
 #define SYS_munmap 11
+#define SYS_rt_sigaction 13
+#define SYS_rt_sigprocmask 14
+#define SYS_rt_sigreturn 15
 #define SYS_ioctl 16
 #define SYS_sched_yield 24
-#define SYS_clone 56
-#define SYS_fork 57
 #define SYS_pipe 22
 #define SYS_nanosleep 35
+#define SYS_clone 56
+#define SYS_fork 57
 #define SYS_getpid 39
 #define SYS_kill 62
 #define SYS_uname 63
 #define SYS_unlink 87
 #define SYS_fcntl 72
+#define SYS_rt_sigpending 127
+#define SYS_rt_sigsuspend 130
 #define SYS_arch_prctl 158
 #define SYS_gettid 186
 #define SYS_getuid 102
@@ -30,6 +35,7 @@
 #define SYS_exit 60
 #define SYS_exit_group 231
 #define SYS_futex 202
+#define SYS_tgkill 234
 #define SYS_set_tid_address 218
 
 static inline long __syscall_ret(unsigned long r)
