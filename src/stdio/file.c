@@ -235,3 +235,14 @@ int fileno(FILE *f)
 {
     return f->fd;
 }
+
+// в ребёнке после fork других потоков нет — снимаем зависшие локи
+void __stdio_fork_child(void)
+{
+    open_list_lock = 0;
+    for (FILE *f = open_list; f; f = f->next)
+        f->lock = 0;
+    __stdin_st.lock = 0;
+    __stdout_st.lock = 0;
+    __stderr_st.lock = 0;
+}

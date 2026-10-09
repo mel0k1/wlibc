@@ -8,6 +8,11 @@ pid_t getpid(void)
     return (pid_t)__syscall_ret(__syscall0(SYS_getpid));
 }
 
+pid_t getppid(void)
+{
+    return (pid_t)__syscall_ret(__syscall0(SYS_getppid));
+}
+
 uid_t getuid(void)
 {
     return (uid_t)__syscall_ret(__syscall0(SYS_getuid));

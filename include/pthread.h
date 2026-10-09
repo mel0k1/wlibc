@@ -61,6 +61,9 @@ int pthread_cond_broadcast(pthread_cond_t *c);
 
 int pthread_once(pthread_once_t *o, void (*fn)(void));
 
+int pthread_atfork(void (*prepare)(void), void (*parent)(void),
+                   void (*child)(void));
+
 int pthread_attr_init(pthread_attr_t *a);
 int pthread_attr_destroy(pthread_attr_t *a);
 int pthread_attr_setstacksize(pthread_attr_t *a, size_t n);

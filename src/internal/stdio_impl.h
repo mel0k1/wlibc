@@ -36,6 +36,7 @@ int __refill(FILE *f);
 void __wbuf_put(FILE *f, const unsigned char *p, size_t n);
 void __stdio_register(FILE *f);
 void __stdio_unregister(FILE *f);
+void __stdio_fork_child(void);
 int __faccess(FILE *f, int wr);
 void __facc_cache(FILE *f);
 int __to_write(FILE *f);

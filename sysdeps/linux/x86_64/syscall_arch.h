@@ -16,11 +16,17 @@
 #define SYS_ioctl 16
 #define SYS_sched_yield 24
 #define SYS_pipe 22
+#define SYS_dup2 33
 #define SYS_nanosleep 35
+#define SYS_access 21
 #define SYS_clone 56
 #define SYS_fork 57
+#define SYS_execve 59
+#define SYS_exit 60
+#define SYS_wait4 61
 #define SYS_getpid 39
 #define SYS_kill 62
+#define SYS_getppid 110
 #define SYS_uname 63
 #define SYS_unlink 87
 #define SYS_fcntl 72

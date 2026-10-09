@@ -196,3 +196,8 @@ void *realloc(void *ptr, size_t n)
     pthread_mutex_unlock(&heap_lock);
     return p;
 }
+
+void __malloc_fork_child(void)
+{
+    heap_lock.__lock = 0;
+}
