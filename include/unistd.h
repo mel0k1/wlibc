@@ -18,6 +18,7 @@ ssize_t write(int fd, const void *buf, size_t n);
 int close(int fd);
 off_t lseek(int fd, off_t off, int whence);
 int unlink(const char *path);
+int pipe(int fds[2]);
 
 pid_t getpid(void);
 uid_t getuid(void);

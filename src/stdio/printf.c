@@ -5,12 +5,21 @@ int printf(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    int r = vdprintf(1, fmt, ap);
+    int r = vfprintf(stdout, fmt, ap);
     va_end(ap);
     return r;
 }
 
 int vprintf(const char *fmt, va_list ap)
 {
-    return vdprintf(1, fmt, ap);
+    return vfprintf(stdout, fmt, ap);
+}
+
+int fprintf(FILE *f, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int r = vfprintf(f, fmt, ap);
+    va_end(ap);
+    return r;
 }

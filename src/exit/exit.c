@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <libc.h>
 
 #define ATEXIT_MAX 32
 
@@ -18,5 +19,6 @@ void exit(int code)
 {
     while (atn)
         atf[--atn]();
+    __stdio_exit();
     _exit(code);
 }

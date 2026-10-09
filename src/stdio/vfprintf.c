@@ -5,11 +5,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <libc.h>
+#include <stdio_impl.h>
 
 #define SINK_TMP 512
 
 struct sink {
-    int fd;
+    FILE *f; // режим FILE
+    int fd; // режим fd, -1 для mem
     char *mem;
     size_t cap;
     size_t len;
@@ -35,6 +37,8 @@ int __fd_write_all(int fd, const char *buf, size_t n)
 
 static void sink_flush(struct sink *s)
 {
+    if (s->f || s->fd < 0)
+        return;
     if (s->tn && !s->err && __fd_write_all(s->fd, s->tmp, s->tn) < 0)
         s->err = 1;
     s->tn = 0;
@@ -42,6 +46,13 @@ static void sink_flush(struct sink *s)
 
 static void sink_out(struct sink *s, const char *p, size_t n)
 {
+    if (s->f) {
+        s->len += n;
+        __wbuf_put(s->f, (const unsigned char *)p, n);
+        if (s->f->flags & F_ERR)
+            s->err = 1;
+        return;
+    }
     if (s->fd >= 0) {
         s->len += n;
         while (n) {
@@ -382,6 +393,7 @@ static int core(struct sink *s, const char *fmt, va_list ap)
 int vdprintf(int fd, const char *fmt, va_list ap)
 {
     struct sink s;
+    s.f = 0;
     s.fd = fd;
     s.mem = 0;
     s.cap = 0;
@@ -391,9 +403,28 @@ int vdprintf(int fd, const char *fmt, va_list ap)
     return core(&s, fmt, ap);
 }
 
+int vfprintf(FILE *f, const char *fmt, va_list ap)
+{
+    struct sink s;
+    s.f = f;
+    s.fd = -1;
+    s.mem = 0;
+    s.cap = 0;
+    s.len = 0;
+    s.err = 0;
+    s.tn = 0;
+    __flock(f);
+    if (__to_write(f) < 0)
+        s.err = 1;
+    int r = core(&s, fmt, ap);
+    __funlock(f);
+    return s.err ? -1 : r;
+}
+
 int vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 {
     struct sink s;
+    s.f = 0;
     s.fd = -1;
     s.mem = buf;
     s.cap = n;
@@ -409,6 +440,7 @@ int vsnprintf(char *buf, size_t n, const char *fmt, va_list ap)
 int vsprintf(char *buf, const char *fmt, va_list ap)
 {
     struct sink s;
+    s.f = 0;
     s.fd = -1;
     s.mem = buf;
     s.cap = (size_t)-1;

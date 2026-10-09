@@ -23,6 +23,11 @@ int unlink(const char *path)
     return (int)__syscall_ret(__syscall1(SYS_unlink, (long)path));
 }
 
+int pipe(int fds[2])
+{
+    return (int)__syscall_ret(__syscall1(SYS_pipe, (long)fds));
+}
+
 unsigned sleep(unsigned seconds)
 {
     struct ts {
