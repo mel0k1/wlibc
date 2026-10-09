@@ -20,15 +20,18 @@ read end-to-end and port to a new OS or architecture by adding a single
 | `stdlib.h`: `malloc`/`calloc`/`realloc`/`free` (mmap-backed), `strtol`/`atoi`/`atol`, `qsort`/`bsearch`, `rand`/`srand` | done |
 | `unistd.h` / `fcntl.h` / `sys/mman.h`: `read`, `write`, `open`, `close`, `lseek`, `unlink`, `mmap`, `mprotect`, `munmap`, ... | done |
 | `errno`, `strerror`, `assert`, `ctype` | done |
-| buffered `FILE*` stdio | planned |
-| pthreads (`clone` + futex) | planned |
+| TLS: `__thread` via local-exec model, per-thread `errno` / `strerror` buf / `rand` state | done |
+| pthreads: `create`/`join`/`detach`/`exit` on `clone(2)`, futex mutexes / condvars / `pthread_once` | done |
+| buffered `FILE*` stdio: `fopen`/`fdopen`/`fclose`, `fread`/`fwrite`, `fgetc`/`fputc`, `fgets`/`fputs`, `fseek`/`ftell`/`rewind`, `ungetc`, `setvbuf`, `fflush` | done |
 | math library (fdlibm) | planned |
 | dynamic linking | not planned for now |
 | more architectures (aarch64, riscv64) | planned |
 
 Known simplifications: `printf` has no `%n` (silently ignored) and `%f` is a
-fixed-point approximation without exponent form; `stdio` is unbuffered and
-writes straight to file descriptors.
+fixed-point approximation without exponent form; pthreads has no cancellation,
+rwlocks, timed waits or per-thread TS yet; condvars use a sequence-counter
+protocol (spurious wakeups are allowed, which `while (!pred) wait` loops
+tolerate by design).
 
 ## Design
 
