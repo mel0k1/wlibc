@@ -5,12 +5,15 @@ CC := gcc
 AR := ar
 
 CFLAGS := -std=c11 -O2 -g -Wall -Wextra -ffreestanding -fno-builtin \
-          -fno-stack-protector -fno-asynchronous-unwind-tables -nostdinc
+          -fno-stack-protector -fno-asynchronous-unwind-tables -nostdinc \
+          -ftls-model=local-exec
 CPPFLAGS := -Iinclude -Isrc/internal -Isysdeps/$(SYS)/$(ARCH)
-LDFLAGS := -static -nostdlib
+LDFLAGS := -static -nostdlib -no-pie
 
 SRCS := $(wildcard src/*/*.c)
 OBJS := $(SRCS:.c=.o)
+ASMS := $(filter-out sysdeps/$(SYS)/$(ARCH)/crt1.s,$(wildcard sysdeps/$(SYS)/$(ARCH)/*.s))
+SYSOBJS := $(patsubst sysdeps/%.s,obj/%.o,$(ASMS))
 CRT := obj/crt1.o
 LIBC := libc.a
 
@@ -23,11 +26,15 @@ $(CRT): sysdeps/$(SYS)/$(ARCH)/crt1.s
 	@mkdir -p $(@D)
 	$(CC) -c $< -o $@
 
+obj/%.o: sysdeps/%.s
+	@mkdir -p $(@D)
+	$(CC) -c $< -o $@
+
 %.o: %.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(LIBC): $(OBJS)
+$(LIBC): $(OBJS) $(SYSOBJS)
 	$(AR) rcs $@ $^
 
 bin/%: tests/%.c $(LIBC) $(CRT)

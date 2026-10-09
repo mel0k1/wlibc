@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-static unsigned long long rs = 1;
+static __thread unsigned long long rs = 1;
 
 void srand(unsigned seed)
 {

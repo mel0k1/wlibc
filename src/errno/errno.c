@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static int errno_val;
+static __thread int errno_val;
 
 int *__errno_location(void)
 {
@@ -73,7 +73,7 @@ const char *strerror(int e)
 {
     if (e >= 0 && (size_t)e < sizeof(msgs) / sizeof(*msgs) && msgs[e])
         return msgs[e];
-    static char buf[32];
+    static __thread char buf[32];
     snprintf(buf, sizeof(buf), "Unknown error %d", e);
     return buf;
 }
