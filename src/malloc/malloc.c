@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <syscall.h>
+#include <pthread.h>
 
 // куча: заранее резервируем виртуальное пространство (PROT_NONE) и по мере
 // необходимости подключаем страницы через mprotect, поэтому блоки всегда
@@ -78,7 +79,9 @@ static void blk_use(blk_t *b, size_t need)
     *(size_t *)((char *)b + total - FTR) = b->size;
 }
 
-void *malloc(size_t n)
+static pthread_mutex_t heap_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static void *malloc_impl(size_t n)
 {
     if (!n)
         n = 1;
@@ -100,7 +103,7 @@ void *malloc(size_t n)
     return (char *)b + HDR;
 }
 
-void free(void *ptr)
+static void free_impl(void *ptr)
 {
     if (!ptr)
         return;
@@ -123,6 +126,23 @@ void free(void *ptr)
     *(size_t *)((char *)b + b->size - FTR) = b->size;
 }
 
+void *malloc(size_t n)
+{
+    pthread_mutex_lock(&heap_lock);
+    void *p = malloc_impl(n);
+    pthread_mutex_unlock(&heap_lock);
+    return p;
+}
+
+void free(void *ptr)
+{
+    if (!ptr)
+        return;
+    pthread_mutex_lock(&heap_lock);
+    free_impl(ptr);
+    pthread_mutex_unlock(&heap_lock);
+}
+
 void *calloc(size_t nmemb, size_t size)
 {
     if (size && nmemb > (size_t)-1 / size) {
@@ -130,18 +150,20 @@ void *calloc(size_t nmemb, size_t size)
         return 0;
     }
     size_t n = nmemb * size;
-    void *p = malloc(n);
+    pthread_mutex_lock(&heap_lock);
+    void *p = malloc_impl(n);
+    pthread_mutex_unlock(&heap_lock);
     if (p)
         memset(p, 0, n);
     return p;
 }
 
-void *realloc(void *ptr, size_t n)
+static void *realloc_impl(void *ptr, size_t n)
 {
     if (!ptr)
-        return malloc(n);
+        return malloc_impl(n);
     if (!n) {
-        free(ptr);
+        free_impl(ptr);
         return 0;
     }
     blk_t *b = (blk_t *)((char *)ptr - HDR);
@@ -159,10 +181,18 @@ void *realloc(void *ptr, size_t n)
             return ptr;
         }
     }
-    void *np = malloc(n);
+    void *np = malloc_impl(n);
     if (!np)
         return 0;
     memcpy(np, ptr, cur < n ? cur : n);
-    free(ptr);
+    free_impl(ptr);
     return np;
+}
+
+void *realloc(void *ptr, size_t n)
+{
+    pthread_mutex_lock(&heap_lock);
+    void *p = realloc_impl(ptr, n);
+    pthread_mutex_unlock(&heap_lock);
+    return p;
 }
