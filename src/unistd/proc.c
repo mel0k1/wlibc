@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 #include <syscall.h>
 
@@ -35,16 +36,10 @@ int pipe(int fds[2])
 
 unsigned sleep(unsigned seconds)
 {
-    struct ts {
-        long sec;
-        long nsec;
-    } req = { (long)seconds, 0 }, rem;
-    for (;;) {
-        rem.sec = 0;
-        rem.nsec = 0;
-        long r = __syscall2(SYS_nanosleep, (long)&req, (long)&rem);
-        if (r != -1 || errno != EINTR)
-            return (unsigned)rem.sec;
+    struct timespec req = { (long)seconds, 0 }, rem;
+    rem.tv_sec = 0;
+    rem.tv_nsec = 0;
+    while (nanosleep(&req, &rem) == -1 && errno == EINTR)
         req = rem;
-    }
+    return (unsigned)rem.tv_sec;
 }

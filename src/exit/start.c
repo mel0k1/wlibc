@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <libc.h>
+#include <vdso.h>
 #include <pthread_impl.h>
 
 char **environ;
@@ -8,6 +9,7 @@ char **environ;
 #define AT_PHDR 3
 #define AT_PHENT 4
 #define AT_PHNUM 5
+#define AT_SYSINFO_EHDR 33
 
 __attribute__((noreturn)) void __libc_start_main(long argc, char **argv)
 {
@@ -17,7 +19,7 @@ __attribute__((noreturn)) void __libc_start_main(long argc, char **argv)
         e++;
     unsigned long *auxv = (unsigned long *)(e + 1);
 
-    unsigned long phdr = 0, phent = 0, phnum = 0;
+    unsigned long phdr = 0, phent = 0, phnum = 0, vdso = 0;
     for (unsigned long *a = auxv; a[0]; a += 2) {
         if (a[0] == AT_PHDR)
             phdr = a[1];
@@ -25,10 +27,13 @@ __attribute__((noreturn)) void __libc_start_main(long argc, char **argv)
             phent = a[1];
         else if (a[0] == AT_PHNUM)
             phnum = a[1];
+        else if (a[0] == AT_SYSINFO_EHDR)
+            vdso = a[1];
     }
 
     environ = envp;
     __init_tls((unsigned long *)phdr, (int)phnum, (int)phent);
+    __init_vdso((void *)vdso);
     __stdio_init();
 
     extern int main(int, char **, char **);

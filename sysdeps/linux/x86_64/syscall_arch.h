@@ -29,6 +29,8 @@
 #define SYS_getppid 110
 #define SYS_uname 63
 #define SYS_unlink 87
+#define SYS_gettimeofday 96
+#define SYS_times 100
 #define SYS_fcntl 72
 #define SYS_rt_sigpending 127
 #define SYS_rt_sigsuspend 130
@@ -41,6 +43,9 @@
 #define SYS_exit 60
 #define SYS_exit_group 231
 #define SYS_futex 202
+#define SYS_time 201
+#define SYS_clock_gettime 228
+#define SYS_clock_getres 229
 #define SYS_tgkill 234
 #define SYS_set_tid_address 218
 
