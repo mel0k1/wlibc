@@ -1,7 +1,7 @@
 # wlibc
 
 > Portable C standard library for Linux on x86_64, written from scratch.
-> Takes design cues from [musl](https://musl.libc.org), [mlibc](https://github.com/managarm/mlibc) and [glibc](https://www.gnu.org/software/libc/).
+> Takes design cues from [m[musl](https://musl.libc.org), [mlibc](https://github.com/managarm/mlibc) and [glibc](https://www.gnu.org/software/libc/).
 
 `wlibc` is a small, freestanding-first libc: it does not depend on the host
 libc at all (the whole library builds with `-nostdinc`), ships its own
@@ -26,7 +26,9 @@ read end-to-end and port to a new OS or architecture by adding a single
 | signals: `sigaction`/`signal`, `sigprocmask`/`sigpending`/`sigsuspend`, sigset ops, `kill`/`raise`, sigreturn trampoline | done |
 | process: `fork` + `pthread_atfork`, `execve`/`execl*`/`execv*` (PATH search), `waitpid`/`wait`, `system`, `getenv` | done |
 | time: `clock_gettime`/`clock_getres`/`gettimeofday`/`time`/`clock`/`nanosleep` with vDSO fast path, syscall fallback | done |
-| math library (fdlibm) | planned |
+| math: double/float from fdlibm — `exp`/`log`/`pow`/`sin`... (40 double + 42 float functions), `float.h` | done |
+| calendar: `gmtime`/`gmtime_r`/`localtime(_r)`, `mktime`/`timegm`, `asctime`/`ctime`, `strftime`, `difftime` | done |
+| `pthread_sigmask`, `pthread_kill` | done |
 | dynamic linking | not planned for now |
 | more architectures (aarch64, riscv64) | planned |
 
@@ -35,10 +37,14 @@ fixed-point approximation without exponent form; pthreads has no cancellation,
 rwlocks, timed waits or per-thread TS yet; condvars use a sequence-counter
 protocol (spurious wakeups are allowed, which `while (!pred) wait` loops
 tolerate by design); signals have no `SA_SIGINFO`/`siginfo_t`, no `sigaltstack`
-and no real-time extension helpers (`pthread_sigmask`, `pthread_kill`) yet;
-`fork` in a multithreaded process only resets stdio and heap locks — memory
-mapped by other threads' stacks stays mapped in the child; there is no
-calendar (`gmtime`/`mktime`), timers or `posix_spawn` yet.
+and no `sigaltstack` yet; `fork` in a multithreaded process only resets
+stdio and heap locks — memory mapped by other threads' stacks stays mapped
+in the child; calendar functions treat local time as UTC (`TZ` is not
+parsed yet) and `strftime` has no ISO week specifiers (`%G`/`%g`/`%V`);
+math is ported from fdlibm (via musl) and follows the musl conventions:
+transcendentals do not set `errno`, there is no `fenv.h` control
+(`nearbyint` behaves like `rint`), and `fma`/`erf`/`lgamma`/Bessel are
+still on the roadmap; no timers or `posix_spawn` yet.
 
 ## Design
 
@@ -62,6 +68,11 @@ trampoline (`__restore_rt` in `sysdeps/linux/x86_64/sigreturn.s`), since the
 x86_64 kernel provides no default restorer. On `fork()` the child reclaims
 stdio and heap locks and re-arms `set_tid_address`, so a single-threaded
 copy of a multithreaded parent stays usable.
+
+Math is ported from fdlibm (the musl 1.1.15 lineage of the Sun sources,
+copyright notices preserved): bit-exact scalar algorithms with union-based
+word access, no floating-point environment dependencies. All math lives in
+`libc.a` — there is no separate `libm`.
 
 `clock_gettime` and friends first probe the vDSO (`AT_SYSINFO_EHDR` is parsed
 in `__libc_start_main`, symbols resolved via DT_GNU_HASH/DT_HASH with a load
@@ -106,10 +117,10 @@ int main(void)
 
 ## Roadmap
 
-- calendar time: `gmtime`/`localtime`/`mktime`/`strftime`
-- math functions ported from fdlibm
-- pthreads completion: `pthread_sigmask`, `pthread_kill`, timed waits, rwlocks
-- `posix_spawn`, `poll`/`select`, `opendir`/`readdir`
+- math completion: `fma`, `erf`/`erfc`, `lgamma`/`tgamma`, Bessel, long double
+- pthreads completion: timed waits, rwlocks, cancellation
+- `SA_SIGINFO`, `sigaltstack`, `posix_spawn`, `poll`/`select`, `opendir`/`readdir`
+- `TZ` parsing for `localtime`/`mktime`, ISO week specifiers in `strftime`
 - aarch64 and riscv64 sysdeps
 - locale skeleton (C + UTF-8)
 
