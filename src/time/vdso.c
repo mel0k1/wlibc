@@ -88,7 +88,8 @@ static void *resolve_gnu(size_t bias, const Sym *symtab, const char *strtab,
         return 0;
     for (;; i++) {
         unsigned hv = chain[i - gh->symoffset];
-        if (hv == h) {
+        // LSB слова цепочки — признак конца, из сравнения он стирается
+        if ((hv | 1) == (h | 1)) {
             const Sym *sym = &symtab[i];
             if (sym->st_value && !strcmp(strtab + sym->st_name, name))
                 return (void *)(bias + sym->st_value);
