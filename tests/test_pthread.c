@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -19,6 +20,32 @@ static int queue, queue_done;
 static pthread_once_t once_flag = PTHREAD_ONCE_INIT;
 static int once_runs;
 static volatile int detached_done;
+
+// --- pthread_sigmask / pthread_kill ---
+static volatile sig_atomic_t sig_usr1_count;
+static volatile pthread_t sig_target;
+static pthread_mutex_t sig_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t sig_cv = PTHREAD_COND_INITIALIZER;
+static int sig_ready;
+
+static void usr1_handler(int sig)
+{
+    (void)sig;
+    sig_usr1_count++;
+    sig_target = pthread_self();
+}
+
+static void *sig_waiter(void *arg)
+{
+    (void)arg;
+    pthread_mutex_lock(&sig_mu);
+    sig_ready = 1;
+    pthread_cond_signal(&sig_cv);
+    pthread_mutex_unlock(&sig_mu);
+    while (sig_usr1_count < 3)
+        sleep(0);
+    return NULL;
+}
 
 static void *adder(void *arg)
 {
@@ -169,6 +196,55 @@ int main(void)
     // self/equal
     assert(pthread_equal(pthread_self(), pthread_self()));
     assert(!pthread_equal(pthread_self(), s));
+
+    // pthread_sigmask: заблокированный сигнал ждёт в pending
+    struct sigaction sa = { .sa_handler = usr1_handler };
+    sigemptyset(&sa.sa_mask);
+    assert(sigaction(SIGUSR1, &sa, NULL) == 0);
+
+    sigset_t block, oldset;
+    sigemptyset(&block);
+    sigaddset(&block, SIGUSR1);
+    assert(pthread_sigmask(SIG_BLOCK, &block, &oldset) == 0);
+    assert(sigismember(&oldset, SIGUSR1) == 0);
+    raise(SIGUSR1);
+    assert(sig_usr1_count == 0);
+    sigset_t pend;
+    sigemptyset(&pend);
+    assert(sigpending(&pend) == 0);
+    assert(sigismember(&pend, SIGUSR1) == 1);
+    assert(pthread_sigmask(SIG_UNBLOCK, &block, NULL) == 0);
+    assert(sig_usr1_count == 1);
+    sig_usr1_count = 0;
+
+    // SIG_SETMASK возвращает прежнюю маску
+    sigset_t chk;
+    assert(pthread_sigmask(SIG_SETMASK, &oldset, NULL) == 0);
+    assert(pthread_sigmask(SIG_SETMASK, NULL, &chk) == 0);
+    assert(sigismember(&chk, SIGUSR1) == 0);
+
+    // pthread_kill: адресная доставка SIGUSR1 в живой поток
+    pthread_t wt;
+    assert(pthread_create(&wt, NULL, sig_waiter, NULL) == 0);
+    pthread_mutex_lock(&sig_mu);
+    while (!sig_ready)
+        pthread_cond_wait(&sig_cv, &sig_mu);
+    pthread_mutex_unlock(&sig_mu);
+
+    assert(pthread_kill(wt, 0) == 0);
+    assert(pthread_kill(wt, _NSIG) == EINVAL);
+    assert(pthread_kill(wt, -3) == EINVAL);
+    // обычные сигналы не ставятся в очередь: следующий kill шлём только
+    // после доставки предыдущего, иначе доставки коалесцируют
+    for (int i = 0; i < 3; i++) {
+        int before = sig_usr1_count;
+        assert(pthread_kill(wt, SIGUSR1) == 0);
+        while (sig_usr1_count == before)
+            sleep(0);
+    }
+    pthread_join(wt, NULL);
+    assert(sig_usr1_count == 3);
+    assert(pthread_equal(sig_target, wt));
 
     printf("test_pthread passed\n");
     return 0;

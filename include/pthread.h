@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdarg.h>
+#include <signal.h>
 
 typedef struct pthread *pthread_t;
 
@@ -63,6 +64,9 @@ int pthread_once(pthread_once_t *o, void (*fn)(void));
 
 int pthread_atfork(void (*prepare)(void), void (*parent)(void),
                    void (*child)(void));
+
+int pthread_sigmask(int how, const sigset_t *set, sigset_t *old);
+int pthread_kill(pthread_t t, int sig);
 
 int pthread_attr_init(pthread_attr_t *a);
 int pthread_attr_destroy(pthread_attr_t *a);
